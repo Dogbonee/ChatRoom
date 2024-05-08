@@ -1,0 +1,22 @@
+cmake_minimum_required(VERSION 3.28)
+project(ChatRoom)
+
+set(SFML_DIR C:/StudentFiles/Student/SFML-2.6.1/lib/cmake/SFML)
+set(SFML_STATIC_LIBRARIES true)
+set(CMAKE_CXX_STANDARD 17)
+set(SOURCE_FILES src/main.cpp
+        src/Program.cpp
+        src/Program.h
+        src/StateMachine.cpp
+        src/StateMachine.h
+        src/State.cpp
+        src/State.h
+        src/Textbox.cpp
+        src/Textbox.h
+        src/ResourceLoader.cpp
+        src/ResourceLoader.h)
+
+add_executable(${PROJECT_NAME} ${SOURCE_FILES})
+
+find_package(SFML COMPONENTS system window graphics CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE sfml-system sfml-network sfml-graphics sfml-window)
