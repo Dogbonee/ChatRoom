@@ -8,14 +8,14 @@
 
 #include "ResourceLoader.h"
 
-Textbox::Textbox() : m_bActive(false)
+Textbox::Textbox(const sf::Vector2f& size, const sf::Vector2f& position) : m_bActive(false), m_blinkCounter(0)
 {
-    m_textBoxOutline.setSize(sf::Vector2f(700, 70));
-    m_textBoxOutline.setOrigin(m_textBoxOutline.getSize().x/2, m_textBoxOutline.getSize().y/2);
+    m_textBoxOutline.setSize(size);
+    m_textBoxOutline.setOrigin(size.x/2, size.y/2);
     m_textBoxOutline.setOutlineColor(sf::Color::Black);
     m_textBoxOutline.setFillColor(sf::Color::Transparent);
     m_textBoxOutline.setOutlineThickness(2);
-    m_textBoxOutline.setPosition(400, 820);
+    m_textBoxOutline.setPosition(position);
 
     m_cursor.setFont(Resources::CursorFont);
     m_cursor.setString("l");
@@ -76,12 +76,12 @@ void Textbox::ProcessText(sf::Uint32 unicode)
 void Textbox::ManageCursorBlink(float dt)
 {
 
-    static float counter = 0.f;
-    counter += dt;
-    m_cursor.setFillColor(sf::Color(0,0,0, ((counter < m_cursorBlinkRate/2) * 255) * m_bActive) );
-    if(counter > m_cursorBlinkRate)
+    
+    m_blinkCounter += dt;
+    m_cursor.setFillColor(sf::Color(0,0,0, ((m_blinkCounter < m_cursorBlinkRate/2) * 255) * m_bActive) );
+    if(m_blinkCounter > m_cursorBlinkRate)
     {
-        counter = 0;
+        m_blinkCounter = 0;
     }
 
 }

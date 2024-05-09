@@ -12,7 +12,9 @@ set(SOURCE_FILES src/main.cpp
         src/ResourceLoader.cpp
         src/ResourceLoader.h
         src/TextContainer.cpp
-        src/TextContainer.h)
+        src/TextContainer.h
+        src/Label.cpp
+        src/Label.h)
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 

@@ -13,6 +13,7 @@ class Textbox : public sf::Drawable{
 
     sf::RectangleShape m_textBoxOutline;
     sf::Text m_cursor;
+    float m_blinkCounter;
 
     sf::Text m_text;
 
@@ -22,7 +23,7 @@ class Textbox : public sf::Drawable{
     float m_cursorBlinkRate = 1.0f;
 
 public:
-    Textbox();
+    Textbox(const sf::Vector2f& size, const sf::Vector2f& position);
     void ManageTextBox(sf::RenderWindow* window, sf::Event event);
     void ProcessText(sf::Uint32 unicode);
     void ManageCursorBlink(float dt);

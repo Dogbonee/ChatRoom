@@ -21,7 +21,7 @@ void TextContainer::PushText(sf::String str)
     sf::Text text;
     text.setFont(Resources::CursorFont);
     text.setString(str);
-    text.setCharacterSize(40);
+    text.setCharacterSize(30);
     text.setFillColor(sf::Color::Black);
     text.setPosition(m_container.getGlobalBounds().left + 10, m_container.getGlobalBounds().top + m_spacing);
     m_spacing += m_textHeight;

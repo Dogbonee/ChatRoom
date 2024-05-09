@@ -9,21 +9,32 @@
 #include <iostream>
 #include <thread>
 
+#include "Label.h"
 #include "Textbox.h"
 #include "TextContainer.h"
 
 
-enum NetworkType
+enum class NetworkType
 {
     UNASSIGNED = 0,
     SERVER,
     CLIENT
 };
 
+enum class Mode
+{
+    MENU = 0,
+    CHAT
+};
 
 class Program{
 
+    Mode m_mode;
     NetworkType m_type;
+    std::string m_username;
+
+    Label m_nameLabel;
+    Textbox m_nameBox;
 
     Textbox m_textBox;
     TextContainer m_textContainer;
