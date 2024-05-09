@@ -29,8 +29,6 @@ Textbox::Textbox(const sf::Vector2f& size, const sf::Vector2f& position) : m_bAc
     m_text.setFillColor(sf::Color::Black);
     m_text.setPosition(m_textBoxOutline.getGlobalBounds().left + 10, m_textBoxOutline.getGlobalBounds().top + 10);
 
-    m_textCursor.loadFromSystem(sf::Cursor::Text);
-    m_normalCursor.loadFromSystem(sf::Cursor::Arrow);
 }
 
 void Textbox::ManageTextBox(sf::RenderWindow* window, sf::Event event)
@@ -40,10 +38,10 @@ void Textbox::ManageTextBox(sf::RenderWindow* window, sf::Event event)
         case sf::Event::MouseMoved:
             if(m_textBoxOutline.getGlobalBounds().contains(sf::Vector2f(event.mouseMove.x, event.mouseMove.y)))
             {
-                window->setMouseCursor(m_textCursor);
+                window->setMouseCursor(Resources::TextCursor);
             }else
             {
-                window->setMouseCursor(m_normalCursor);
+                window->setMouseCursor(Resources::NormalCursor);
             }
         break;
         case sf::Event::MouseButtonPressed:

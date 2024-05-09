@@ -9,6 +9,7 @@
 #include <iostream>
 #include <thread>
 
+#include "Button.h"
 #include "Label.h"
 #include "Textbox.h"
 #include "TextContainer.h"
@@ -33,9 +34,15 @@ class Program{
     NetworkType m_type;
     std::string m_username;
 
+
+    //Menu members
     Label m_nameLabel;
     Textbox m_nameBox;
+    Button m_createRoomButton;
+    Button m_joinRoomButton;
 
+
+    //Chat members
     Textbox m_textBox;
     TextContainer m_textContainer;
 
@@ -52,6 +59,9 @@ class Program{
 
     sf::TcpSocket m_socket;
     sf::TcpListener m_listener;
+
+    void StartServerNetworkThread();
+    void StartClientNetworkThread();
 
     void CreateServer();
     void CreateClient();

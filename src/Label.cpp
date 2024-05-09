@@ -20,6 +20,6 @@ void Label::SetOriginToCenter()
 
 void Label::SetPositionWithCenter(const sf::Vector2f &position)
 {
-    setPosition(position);
     SetOriginToCenter();
+    setPosition(position);
 }

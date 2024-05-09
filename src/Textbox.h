@@ -17,8 +17,7 @@ class Textbox : public sf::Drawable{
 
     sf::Text m_text;
 
-    sf::Cursor m_textCursor;
-    sf::Cursor m_normalCursor;
+
 
     float m_cursorBlinkRate = 1.0f;
 

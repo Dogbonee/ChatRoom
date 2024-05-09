@@ -14,7 +14,9 @@ set(SOURCE_FILES src/main.cpp
         src/TextContainer.cpp
         src/TextContainer.h
         src/Label.cpp
-        src/Label.h)
+        src/Label.h
+        src/Button.cpp
+        src/Button.h)
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 

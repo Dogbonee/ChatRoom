@@ -4,15 +4,41 @@
 
 #include "Program.h"
 
+#include "ResourceLoader.h"
 
 
 Program::Program() : m_window(sf::VideoMode(800,900), "Chatroom", sf::Style::Close), m_bSocketIsReady(false),
-m_type(NetworkType::UNASSIGNED), m_mode(Mode::MENU), m_textBox(sf::Vector2f(700, 70), sf::Vector2f(400, 820)),
-m_nameBox(sf::Vector2f(400, 70), sf::Vector2f(400, 500))
+                     m_type(NetworkType::UNASSIGNED), m_mode(Mode::MENU), m_textBox(sf::Vector2f(700, 70), sf::Vector2f(400, 820)),
+                     m_nameBox(sf::Vector2f(400, 70), sf::Vector2f(400, 500))
 {
 
     m_nameLabel.setString("Enter Username");
     m_nameLabel.SetPositionWithCenter(sf::Vector2f(400, 400));
+
+    m_createRoomButton.SetButtonLabelText("Create Room");
+    m_createRoomButton.SetButtonLabelSize(30);
+    m_createRoomButton.SetButtonPosition(sf::Vector2f(600, 700));
+    std::function serverFunc = [this] {
+        m_username = m_nameBox.GetString();
+        if(!m_username.empty())
+        {
+            StartServerNetworkThread();
+        }
+    };
+    m_createRoomButton.SetCallback(serverFunc);
+
+    m_joinRoomButton.SetButtonLabelText("Join Room");
+    m_joinRoomButton.SetButtonLabelSize(30);
+    m_joinRoomButton.SetButtonPosition(sf::Vector2f(200, 700));
+    std::function clientFunc = [this] {
+        m_username = m_nameBox.GetString();
+        if(!m_username.empty())
+        {
+            StartClientNetworkThread();
+        }
+    };
+    m_joinRoomButton.SetCallback(clientFunc);
+
 }
 
 Program::~Program()
@@ -30,6 +56,7 @@ Program::~Program()
 
 void Program::Run()
 {
+    m_window.setFramerateLimit(30);
     while(m_window.isOpen())
     {
         Update();
@@ -55,6 +82,8 @@ void Program::Render()
     {
         m_window.draw(m_nameLabel);
         m_window.draw(m_nameBox);
+        m_window.draw(m_createRoomButton);
+        m_window.draw(m_joinRoomButton);
     }
 
     if(m_mode == Mode::CHAT)
@@ -72,6 +101,10 @@ void Program::HandleEvents()
         if(m_mode == Mode::MENU)
         {
             m_nameBox.ManageTextBox(&m_window, event);
+            m_window.setMouseCursor(Resources::NormalCursor);
+            m_createRoomButton.ManageButton(&m_window, event);
+            m_joinRoomButton.ManageButton(&m_window, event);
+
         }
         else if(m_mode == Mode::CHAT)
         {
@@ -98,12 +131,7 @@ void Program::HandleKeyboardInput(sf::Keyboard::Key key)
             m_window.close();
         break;
         case sf::Keyboard::Enter:
-            if(m_mode == Mode::MENU && !m_nameBox.GetString().isEmpty())
-            {
-                m_username = m_nameBox.GetString();
-                m_mode = Mode::CHAT;
-            }
-            else if(m_mode == Mode::CHAT && !m_textBox.GetString().isEmpty())
+            if(m_mode == Mode::CHAT && !m_textBox.GetString().isEmpty())
             {
                 std::thread sendDataThread(&Program::SendData, this, m_textBox.GetString());
                 sendDataThread.join();
@@ -111,22 +139,7 @@ void Program::HandleKeyboardInput(sf::Keyboard::Key key)
                 m_textBox.ClearString();
             }
         break;
-        case sf::Keyboard::S:
-            if(m_type == NetworkType::UNASSIGNED)
-            {
-                std::cout<<"Server selected\n";
-                m_type = NetworkType::SERVER;
-                m_networkThread = std::thread(&Program::CreateServer, this);
-            }
-        break;
-            case sf::Keyboard::C:
-            if(m_type == NetworkType::UNASSIGNED)
-            {
-                std::cout<<"Client selected\n";
-                m_type = NetworkType::CLIENT;
-                m_networkThread = std::thread(&Program::CreateClient, this);
-            }
-            break;
+
 
     }
 }
@@ -135,15 +148,36 @@ void Program::UpdateNetwork()
 {
     while(m_window.isOpen())
     {
+        if(m_socket.getLocalPort() == 0)
+        {
+            std::cout<<"Socket has disconnected\n";
+            return;
+        }
         auto data = ReceiveData();
         std::cout<<data<<'\n';
         m_textContainer.PushText(data);
+
     }
 }
 
 
+void Program::StartServerNetworkThread()
+{
+    std::cout<<"Server selected\n";
+    m_type = NetworkType::SERVER;
+    m_networkThread = std::thread(&Program::CreateServer, this);
+}
+
+void Program::StartClientNetworkThread()
+{
+    std::cout<<"Client selected\n";
+    m_type = NetworkType::CLIENT;
+    m_networkThread = std::thread(&Program::CreateClient, this);
+}
+
 void Program::CreateServer()
 {
+    m_mode = Mode::CHAT;
     if(m_listener.listen(60000) != sf::Socket::Done)
     {
         std::cout<<"Error when listening for connection\n";
@@ -161,6 +195,7 @@ void Program::CreateServer()
 
 void Program::CreateClient()
 {
+    m_mode = Mode::CHAT;
     while(m_socket.connect("127.0.0.1", 60000, sf::seconds(10)) != sf::Socket::Done)
     {
         std::cout<<"Could not connect to server socket... Retrying...\n";
