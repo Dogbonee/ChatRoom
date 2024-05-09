@@ -6,5 +6,6 @@
 
 void Resources::LoadResources()
 {
-    CursorFont.loadFromFile("C:/Windows/Fonts/AGENCYR.TTF");
+
+    CursorFont.loadFromFile("C:/Windows/Fonts/calibri.ttf");
 }

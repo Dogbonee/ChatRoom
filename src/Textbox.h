@@ -14,6 +14,8 @@ class Textbox : public sf::Drawable{
     sf::RectangleShape m_textBoxOutline;
     sf::Text m_cursor;
 
+    sf::Text m_text;
+
     sf::Cursor m_textCursor;
     sf::Cursor m_normalCursor;
 
@@ -21,9 +23,12 @@ class Textbox : public sf::Drawable{
 
 public:
     Textbox();
-    bool ManageTextBox(sf::RenderWindow* window, sf::Vector2i mousePos);
+    void ManageTextBox(sf::RenderWindow* window, sf::Event event);
+    void ProcessText(sf::Uint32 unicode);
     void ManageCursorBlink(float dt);
     void SetActive(bool bIsActive);
+    void ClearString();
+    const sf::String& GetString();
     void draw(sf::RenderTarget &target, sf::RenderStates states) const override;
 };
 

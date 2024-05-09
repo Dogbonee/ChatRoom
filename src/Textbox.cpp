@@ -4,6 +4,8 @@
 
 #include "Textbox.h"
 
+#include <iostream>
+
 #include "ResourceLoader.h"
 
 Textbox::Textbox() : m_bActive(false)
@@ -21,19 +23,54 @@ Textbox::Textbox() : m_bActive(false)
     m_cursor.setFillColor(sf::Color::Black);
     m_cursor.setPosition(m_textBoxOutline.getGlobalBounds().left + 10, m_textBoxOutline.getGlobalBounds().top + 5);
 
+    m_text.setFont(Resources::CursorFont);
+    m_text.setString("");
+    m_text.setCharacterSize(40);
+    m_text.setFillColor(sf::Color::Black);
+    m_text.setPosition(m_textBoxOutline.getGlobalBounds().left + 10, m_textBoxOutline.getGlobalBounds().top + 10);
+
     m_textCursor.loadFromSystem(sf::Cursor::Text);
     m_normalCursor.loadFromSystem(sf::Cursor::Arrow);
 }
 
-bool Textbox::ManageTextBox(sf::RenderWindow* window, sf::Vector2i mousePos)
+void Textbox::ManageTextBox(sf::RenderWindow* window, sf::Event event)
 {
-    if(m_textBoxOutline.getGlobalBounds().contains(sf::Vector2f(mousePos)))
+    switch(event.type)
     {
-        window->setMouseCursor(m_textCursor);
-        return true;
+        case sf::Event::MouseMoved:
+            if(m_textBoxOutline.getGlobalBounds().contains(sf::Vector2f(event.mouseMove.x, event.mouseMove.y)))
+            {
+                window->setMouseCursor(m_textCursor);
+            }else
+            {
+                window->setMouseCursor(m_normalCursor);
+            }
+        break;
+        case sf::Event::MouseButtonPressed:
+            m_bActive = m_textBoxOutline.getGlobalBounds().contains(sf::Vector2f(event.mouseButton.x, event.mouseButton.y));
+        break;
+        case sf::Event::TextEntered:
+            if(m_bActive)
+            {
+                ProcessText(event.text.unicode);
+            }
+        break;
+
     }
-    window->setMouseCursor(m_normalCursor);
-    return false;
+}
+
+void Textbox::ProcessText(sf::Uint32 unicode)
+{
+
+    if(unicode == 8)
+    {
+        m_text.setString(m_text.getString().substring(0, m_text.getString().getSize()-1));
+    }else if(m_text.getLocalBounds().width + 50 <= m_textBoxOutline.getLocalBounds().width && unicode != '\r')
+    {
+        m_text.setString(m_text.getString() + unicode);
+    }
+    m_cursor.setPosition(m_text.getGlobalBounds().left + m_text.getGlobalBounds().width, m_cursor.getPosition().y);
+
 }
 
 void Textbox::ManageCursorBlink(float dt)
@@ -54,8 +91,19 @@ void Textbox::SetActive(bool bIsActive)
     m_bActive = bIsActive;
 }
 
+void Textbox::ClearString()
+{
+    m_text.setString("");
+}
+
+const sf::String & Textbox::GetString()
+{
+    return m_text.getString();
+}
+
 void Textbox::draw(sf::RenderTarget &target, sf::RenderStates states) const
 {
     target.draw(m_textBoxOutline);
     target.draw(m_cursor);
+    target.draw(m_text);
 }

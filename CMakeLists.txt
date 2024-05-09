@@ -7,14 +7,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(SOURCE_FILES src/main.cpp
         src/Program.cpp
         src/Program.h
-        src/StateMachine.cpp
-        src/StateMachine.h
-        src/State.cpp
-        src/State.h
         src/Textbox.cpp
         src/Textbox.h
         src/ResourceLoader.cpp
-        src/ResourceLoader.h)
+        src/ResourceLoader.h
+        src/TextContainer.cpp
+        src/TextContainer.h)
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 

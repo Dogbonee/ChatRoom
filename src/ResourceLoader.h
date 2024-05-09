@@ -4,6 +4,7 @@
 
 #ifndef RESOURCELOADER_H
 #define RESOURCELOADER_H
+#include <memory>
 #include <SFML/Graphics/Font.hpp>
 
 namespace Resources {

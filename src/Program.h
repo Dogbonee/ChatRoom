@@ -5,27 +5,55 @@
 #ifndef PROGRAM_H
 #define PROGRAM_H
 #include <SFML/Graphics.hpp>
+#include <SFML/Network.hpp>
 #include <iostream>
-#include "State.h"
+#include <thread>
+
 #include "Textbox.h"
+#include "TextContainer.h"
 
-class Program : public State{
 
+enum NetworkType
+{
+    UNASSIGNED = 0,
+    SERVER,
+    CLIENT
+};
+
+
+class Program{
+
+    NetworkType m_type;
 
     Textbox m_textBox;
-    sf::RectangleShape m_chatBorder;
+    TextContainer m_textContainer;
 
     sf::Clock m_clock;
-    float m_dt;
+    float m_dt{};
 
+    sf::RenderWindow m_window;
 
-    void Update() override;
-    void Render() override;
-    void HandleEvents() override;
+    void Update();
+    void Render();
+    void HandleEvents();
+    void HandleKeyboardInput(sf::Keyboard::Key key);
+    void UpdateNetwork();
+
+    sf::TcpSocket m_socket;
+    sf::TcpListener m_listener;
+
+    void CreateServer();
+    void CreateClient();
+    void SendData(std::string data);
+    std::string ReceiveData();
+    bool m_bSocketIsReady;
+    std::thread m_networkThread;
+    std::thread m_updateThread;
 
 public:
-    Program(StateMachine* p_sm, sf::RenderWindow* p_rw);
+    Program();
     ~Program();
+    void Run();
 
 };
 
