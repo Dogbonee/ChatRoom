@@ -9,7 +9,7 @@
 
 Program::Program() : m_window(sf::VideoMode(800,900), "Chatroom", sf::Style::Close), m_bSocketIsReady(false),
                      m_type(NetworkType::UNASSIGNED), m_mode(Mode::MENU), m_textBox(sf::Vector2f(700, 70), sf::Vector2f(400, 820)),
-                     m_nameBox(sf::Vector2f(400, 70), sf::Vector2f(400, 500))
+                     m_nameBox(sf::Vector2f(400, 70), sf::Vector2f(400, 500)), MAX_CLIENTS(8)
 {
 
     m_nameLabel.setString("Enter Username");
@@ -32,31 +32,39 @@ Program::Program() : m_window(sf::VideoMode(800,900), "Chatroom", sf::Style::Clo
     m_joinRoomButton.SetButtonPosition(sf::Vector2f(200, 700));
     std::function clientFunc = [this] {
         m_username = m_nameBox.GetString();
-        if(!m_username.empty())
+        if(!m_username.empty() && !m_networkThread.joinable())
         {
             StartClientNetworkThread();
         }
     };
     m_joinRoomButton.SetCallback(clientFunc);
 
+    m_serverSocket = std::make_shared<sf::TcpSocket>();
+
 }
 
 Program::~Program()
 {
-    m_socket.disconnect();
-    if(m_networkThread.joinable())
+    m_serverSocket->disconnect();
+    for(auto& socket : m_clientSockets)
     {
-        m_networkThread.join();
+        socket->disconnect();
     }
+
+    //basically blowing up the thread but since its blocking its necessary
+    m_networkThread.detach();
+
     if(m_updateThread.joinable())
     {
         m_updateThread.join();
     }
+
 }
 
 void Program::Run()
 {
     m_window.setFramerateLimit(30);
+    m_updateThread = std::thread(UpdateNetwork, this);
     while(m_window.isOpen())
     {
         Update();
@@ -113,7 +121,9 @@ void Program::HandleEvents()
         switch(event.type)
         {
             case sf::Event::Closed:
+                SendData(m_serverSocket, m_username + " has left the chat");
                 m_window.close();
+
             break;
             case sf::Event::KeyPressed:
                 HandleKeyboardInput(event.key.code);
@@ -133,9 +143,15 @@ void Program::HandleKeyboardInput(sf::Keyboard::Key key)
         case sf::Keyboard::Enter:
             if(m_mode == Mode::CHAT && !m_textBox.GetString().isEmpty())
             {
-                std::thread sendDataThread(&Program::SendData, this, m_textBox.GetString());
-                sendDataThread.join();
-                m_textContainer.PushText(m_username + ": " + m_textBox.GetString());
+                if(m_type == NetworkType::SERVER)
+                {
+                    std::string data = m_username + ": " + m_textBox.GetString();
+                    ServerBroadcast(data);
+                    m_textContainer.PushText(data);
+                }else if(m_type == NetworkType::CLIENT)
+                {
+                    SendData(m_serverSocket, m_username + ": " + m_textBox.GetString());
+                }
                 m_textBox.ClearString();
             }
         break;
@@ -148,14 +164,28 @@ void Program::UpdateNetwork()
 {
     while(m_window.isOpen())
     {
-        if(m_socket.getLocalPort() == 0)
+        if(!m_bSocketIsReady)continue;
+
+        if(m_type == NetworkType::CLIENT)
         {
-            std::cout<<"Socket has disconnected\n";
-            return;
+            if(m_serverSocket->getLocalPort() == 0)
+            {
+                m_textContainer.PushText("You have been disconnected from the server");
+                m_bSocketIsReady = false;
+                continue;
+            }
         }
+
         auto data = ReceiveData();
-        std::cout<<data<<'\n';
-        m_textContainer.PushText(data);
+        if(!data.empty())
+        {
+            if(m_type == NetworkType::SERVER)
+            {
+                ServerBroadcast(data);
+            }
+
+            m_textContainer.PushText(data);
+        }
 
     }
 }
@@ -178,40 +208,52 @@ void Program::StartClientNetworkThread()
 void Program::CreateServer()
 {
     m_mode = Mode::CHAT;
-    if(m_listener.listen(60000) != sf::Socket::Done)
+    while(m_window.isOpen())
     {
-        std::cout<<"Error when listening for connection\n";
-        return;
-    }
-    if(m_listener.accept(m_socket) == sf::Socket::Done)
-    {
-        std::cout << "Connected to client\n";
-        m_bSocketIsReady = true;
-        UpdateNetwork();
-    }
+        if(m_listener.listen(60000) != sf::Socket::Done)
+        {
+            std::cout<<"Error when listening for connection\n";
+            return;
+        }
 
+        if(m_listener.accept(*m_clientSockets.emplace_back(std::make_unique<sf::TcpSocket>())) == sf::Socket::Done)
+        {
+            std::cout << "Connected to client\n";
+            m_clientSelector.add(*m_clientSockets[m_clientSockets.size()-1]);
+            m_bSocketIsReady = true;
+        }
+    }
 
 }
 
 void Program::CreateClient()
 {
-    m_mode = Mode::CHAT;
-    while(m_socket.connect("127.0.0.1", 60000, sf::seconds(10)) != sf::Socket::Done)
+
+    while(m_serverSocket->connect("127.0.0.1", 60000, sf::seconds(10)) != sf::Socket::Done)
     {
         std::cout<<"Could not connect to server socket... Retrying...\n";
     }
     std::cout << "Connected to server\n";
+    m_mode = Mode::CHAT;
+    SendData(m_serverSocket, m_username + " has entered the chat");
     m_bSocketIsReady = true;
-    UpdateNetwork();
-
 
 }
 
-void Program::SendData(std::string data)
+void Program::ServerBroadcast(const std::string& data)
+{
+    for(auto & socket : m_clientSockets)
+    {
+        SendData(socket, data);
+    }
+}
+
+void Program::SendData(const std::shared_ptr<sf::TcpSocket>& socket, const std::string& data)
 {
     sf::Packet packet;
-    packet << m_username + ": " + data;
-    if(m_socket.send(packet) != sf::Socket::Done)
+    packet << data;
+
+    if(socket->getRemotePort() != 0 && socket->send(packet) != sf::Socket::Done)
     {
         std::cout<<"Error sending packet\n";
     }
@@ -220,13 +262,47 @@ void Program::SendData(std::string data)
 std::string Program::ReceiveData()
 {
     sf::Packet packet;
-    if(m_socket.receive(packet) != sf::Socket::Done)
+    bool successfulData = true;
+    if(m_type == NetworkType::SERVER)
     {
-        std::cout<<"Error when receiving data\n";
-        m_socket.disconnect();
+        if(m_clientSelector.wait())
+        {
+            for(const auto& socket : m_clientSockets)
+            {
+                if(socket && m_clientSelector.isReady(*socket))
+                {
+                    if(socket->receive(packet) == sf::Socket::Disconnected)
+                    {
+                        m_clientSockets.erase(std::find(m_clientSockets.begin(),m_clientSockets.end(), socket));
+                        successfulData = false;
+                    }
+                }
+            }
+        }
     }
-    std::string str;
-    packet >> str;
+    else if (m_type == NetworkType::CLIENT)
+    {
+        sf::Socket::Status status = m_serverSocket->receive(packet);
 
-    return str;
+        if(m_serverSocket->getRemotePort() == 0)
+        {
+            std::cout<<"Disconnected\n";
+            return "";
+        }
+
+        if(status != sf::Socket::Done)
+        {
+            std::cout<<"Error when receiving data\n";
+            m_serverSocket->disconnect();
+            successfulData = false;
+        }
+    }
+    if(successfulData)
+    {
+        std::string str;
+        packet >> str;
+
+        return str;
+    }
+    return "";
 }

@@ -7,6 +7,7 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Network.hpp>
 #include <iostream>
+#include <memory>
 #include <thread>
 
 #include "Button.h"
@@ -33,7 +34,7 @@ class Program{
     Mode m_mode;
     NetworkType m_type;
     std::string m_username;
-
+    const int MAX_CLIENTS;
 
     //Menu members
     Label m_nameLabel;
@@ -57,15 +58,21 @@ class Program{
     void HandleKeyboardInput(sf::Keyboard::Key key);
     void UpdateNetwork();
 
-    sf::TcpSocket m_socket;
+
+    std::vector<std::shared_ptr<sf::TcpSocket>> m_clientSockets;
+    sf::SocketSelector m_clientSelector;
+    std::shared_ptr<sf::TcpSocket> m_serverSocket;
     sf::TcpListener m_listener;
+
+
 
     void StartServerNetworkThread();
     void StartClientNetworkThread();
 
     void CreateServer();
     void CreateClient();
-    void SendData(std::string data);
+    void ServerBroadcast(const std::string& data);
+    void SendData(const std::shared_ptr<sf::TcpSocket>&, const std::string& data);
     std::string ReceiveData();
     bool m_bSocketIsReady;
     std::thread m_networkThread;
