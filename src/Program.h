@@ -34,11 +34,17 @@ class Program{
     Mode m_mode;
     NetworkType m_type;
     std::string m_username;
-    const int MAX_CLIENTS;
+
+    sf::IpAddress m_address;
+    int m_port;
 
     //Menu members
     Label m_nameLabel;
+    Label m_addressLabel;
+    Label m_portLabel;
     Textbox m_nameBox;
+    Textbox m_addressBox;
+    Textbox m_portBox;
     Button m_createRoomButton;
     Button m_joinRoomButton;
 

@@ -9,19 +9,33 @@
 
 Program::Program() : m_window(sf::VideoMode(800,900), "Chatroom", sf::Style::Close), m_bSocketIsReady(false),
                      m_type(NetworkType::UNASSIGNED), m_mode(Mode::MENU), m_textBox(sf::Vector2f(700, 70), sf::Vector2f(400, 820)),
-                     m_nameBox(sf::Vector2f(400, 70), sf::Vector2f(400, 500)), MAX_CLIENTS(8)
+                     m_nameBox(sf::Vector2f(400, 70), sf::Vector2f(500, 300)),  m_addressBox(sf::Vector2f(400, 70), sf::Vector2f(500, 400)),
+                     m_portBox(sf::Vector2f(400, 70), sf::Vector2f(500, 500))
 {
 
-    m_nameLabel.setString("Enter Username");
-    m_nameLabel.SetPositionWithCenter(sf::Vector2f(400, 400));
+    m_nameLabel.setString("Username");
+    m_nameLabel.SetPositionWithCenter(sf::Vector2f(150, 290));
+    m_addressLabel.setString("Address");
+    m_addressLabel.SetPositionWithCenter(sf::Vector2f(150, 390));
+    m_portLabel.setString("Port");
+    m_portLabel.SetPositionWithCenter(sf::Vector2f(150, 490));
 
     m_createRoomButton.SetButtonLabelText("Create Room");
     m_createRoomButton.SetButtonLabelSize(30);
     m_createRoomButton.SetButtonPosition(sf::Vector2f(600, 700));
     std::function serverFunc = [this] {
         m_username = m_nameBox.GetString();
-        if(!m_username.empty())
+        if(!m_username.empty() && !m_portBox.GetString().isEmpty())
         {
+            m_address = m_addressBox.GetString().toAnsiString();
+            std::string portStr = m_portBox.GetString().toAnsiString();
+            try
+            {
+                m_port = std::stoi(portStr);
+            }catch(std::exception& e)
+            {
+                return;
+            }
             StartServerNetworkThread();
         }
     };
@@ -32,8 +46,17 @@ Program::Program() : m_window(sf::VideoMode(800,900), "Chatroom", sf::Style::Clo
     m_joinRoomButton.SetButtonPosition(sf::Vector2f(200, 700));
     std::function clientFunc = [this] {
         m_username = m_nameBox.GetString();
-        if(!m_username.empty() && !m_networkThread.joinable())
+        if(!m_username.empty() && !m_addressBox.GetString().isEmpty() && !m_portBox.GetString().isEmpty() && !m_networkThread.joinable())
         {
+            m_address = m_addressBox.GetString().toAnsiString();
+            std::string portStr = m_portBox.GetString().toAnsiString();
+            try
+            {
+                m_port = std::stoi(portStr);
+            }catch(std::exception& e)
+            {
+                return;
+            }
             StartClientNetworkThread();
         }
     };
@@ -52,7 +75,10 @@ Program::~Program()
     }
 
     //basically blowing up the thread but since its blocking its necessary
-    m_networkThread.detach();
+    if(m_networkThread.joinable())
+    {
+        m_networkThread.join();
+    }
 
     if(m_updateThread.joinable())
     {
@@ -64,18 +90,20 @@ Program::~Program()
 void Program::Run()
 {
     m_window.setFramerateLimit(30);
-    m_updateThread = std::thread(UpdateNetwork, this);
+    m_updateThread = std::thread(&Program::UpdateNetwork, this);
     while(m_window.isOpen())
     {
         Update();
     }
-};
+}
 
 void Program::Update()
 {
     m_dt = m_clock.restart().asSeconds();
     m_textBox.ManageCursorBlink(m_dt);
     m_nameBox.ManageCursorBlink(m_dt);
+    m_addressBox.ManageCursorBlink(m_dt);
+    m_portBox.ManageCursorBlink(m_dt);
 
     HandleEvents();
     Render();
@@ -89,7 +117,11 @@ void Program::Render()
     if(m_mode == Mode::MENU)
     {
         m_window.draw(m_nameLabel);
+        m_window.draw(m_addressLabel);
+        m_window.draw(m_portLabel);
         m_window.draw(m_nameBox);
+        m_window.draw(m_addressBox);
+        m_window.draw(m_portBox);
         m_window.draw(m_createRoomButton);
         m_window.draw(m_joinRoomButton);
     }
@@ -109,6 +141,8 @@ void Program::HandleEvents()
         if(m_mode == Mode::MENU)
         {
             m_nameBox.ManageTextBox(&m_window, event);
+            m_addressBox.ManageTextBox(&m_window, event);
+            m_portBox.ManageTextBox(&m_window, event);
             m_window.setMouseCursor(Resources::NormalCursor);
             m_createRoomButton.ManageButton(&m_window, event);
             m_joinRoomButton.ManageButton(&m_window, event);
@@ -207,10 +241,11 @@ void Program::StartClientNetworkThread()
 
 void Program::CreateServer()
 {
+    std::cout << "Hosting server on port " << m_port << '\n';
     m_mode = Mode::CHAT;
     while(m_window.isOpen())
     {
-        if(m_listener.listen(60000) != sf::Socket::Done)
+        if(m_listener.listen(m_port) != sf::Socket::Done)
         {
             std::cout<<"Error when listening for connection\n";
             return;
@@ -228,8 +263,8 @@ void Program::CreateServer()
 
 void Program::CreateClient()
 {
-
-    while(m_serverSocket->connect("127.0.0.1", 60000, sf::seconds(10)) != sf::Socket::Done)
+    std::cout<<"Attempting to connect to host at address " << m_address << " on port " << m_port << '\n';
+    while(m_serverSocket->connect(m_address, m_port, sf::seconds(10)) != sf::Socket::Done)
     {
         std::cout<<"Could not connect to server socket... Retrying...\n";
     }
