@@ -64,14 +64,21 @@ Program::Program() : m_window(sf::VideoMode(800,900), "Chatroom", sf::Style::Clo
 
     m_serverSocket = std::make_shared<sf::TcpSocket>();
 
+
+    //Encryption
+    m_encryptionParams.GenerateRandomWithKeySize(m_rng, 2048);
+    m_privateKey = CryptoPP::RSA::PrivateKey(m_encryptionParams);
+    m_publicKey = CryptoPP::RSA::PublicKey(m_encryptionParams);
+
 }
 
 Program::~Program()
 {
+
     m_serverSocket->disconnect();
-    for(auto& socket : m_clientSockets)
+    for(auto& client : m_clients)
     {
-        socket->disconnect();
+        client.Socket->disconnect();
     }
 
     //basically blowing up the thread but since its blocking its necessary
@@ -90,6 +97,8 @@ Program::~Program()
 void Program::Run()
 {
     m_window.setFramerateLimit(30);
+
+
     m_updateThread = std::thread(&Program::UpdateNetwork, this);
     while(m_window.isOpen())
     {
@@ -155,7 +164,10 @@ void Program::HandleEvents()
         switch(event.type)
         {
             case sf::Event::Closed:
-                SendData(m_serverSocket, m_username + " has left the chat");
+                if(m_type == NetworkType::CLIENT)
+                {
+                    SendData(m_serverSocket, EncryptData(m_username + " has left the chat", m_serverPublicKey));
+                }
                 m_window.close();
 
             break;
@@ -184,7 +196,8 @@ void Program::HandleKeyboardInput(sf::Keyboard::Key key)
                     m_textContainer.PushText(data);
                 }else if(m_type == NetworkType::CLIENT)
                 {
-                    SendData(m_serverSocket, m_username + ": " + m_textBox.GetString());
+                    auto encryptedData = EncryptData(m_username + ": " + m_textBox.GetString(), m_serverPublicKey);
+                    SendData(m_serverSocket, encryptedData);
                 }
                 m_textBox.ClearString();
             }
@@ -209,7 +222,7 @@ void Program::UpdateNetwork()
                 continue;
             }
         }
-
+        HandleQueuedMessages();
         auto data = ReceiveData();
         if(!data.empty())
         {
@@ -220,9 +233,11 @@ void Program::UpdateNetwork()
 
             m_textContainer.PushText(data);
         }
-
     }
+
 }
+
+
 
 
 void Program::StartServerNetworkThread()
@@ -251,11 +266,21 @@ void Program::CreateServer()
             return;
         }
 
-        if(m_listener.accept(*m_clientSockets.emplace_back(std::make_unique<sf::TcpSocket>())) == sf::Socket::Done)
+
+        if(m_listener.accept(*m_clients.emplace_back().Socket) == sf::Socket::Done)
         {
-            std::cout << "Connected to client\n";
-            m_clientSelector.add(*m_clientSockets[m_clientSockets.size()-1]);
+            Client& client = m_clients[m_clients.size()-1];
+            sf::Packet keyPacket;
+            client.Socket->receive(keyPacket);
+            std::string key;
+            keyPacket >> key;
+            client.EncryptionKey = ConvertStringToKey(key);
+            client.Ready = true;
+            SendData(client.Socket, ConvertKeyToString(m_publicKey));
+
+            m_clientSelector.add(*client.Socket);
             m_bSocketIsReady = true;
+
         }
     }
 
@@ -270,16 +295,29 @@ void Program::CreateClient()
     }
     std::cout << "Connected to server\n";
     m_mode = Mode::CHAT;
-    SendData(m_serverSocket, m_username + " has entered the chat");
+    SendData(m_serverSocket, ConvertKeyToString(m_publicKey));
+    sf::Packet keyPacket;
+    std::string key;
+    m_serverSocket->receive(keyPacket);
+    keyPacket >> key;
+    m_serverPublicKey = ConvertStringToKey(key);
+    SendData(m_serverSocket, EncryptData(m_username + " has entered the chat", m_serverPublicKey));
     m_bSocketIsReady = true;
 
 }
 
 void Program::ServerBroadcast(const std::string& data)
 {
-    for(auto & socket : m_clientSockets)
+    for(auto & client : m_clients)
     {
-        SendData(socket, data);
+        if(client.Ready)
+        {
+            std::string encryptedData = EncryptData(data, client.EncryptionKey);
+            SendData(client.Socket, encryptedData);
+        }else
+        {
+            m_messageQueue.emplace_back(client, data);
+        }
     }
 }
 
@@ -294,6 +332,21 @@ void Program::SendData(const std::shared_ptr<sf::TcpSocket>& socket, const std::
     }
 }
 
+void Program::HandleQueuedMessages()
+{
+    int i = 0;
+    for(auto& queuedMessage : m_messageQueue)
+    {
+        if(queuedMessage.client.Ready)
+        {
+            SendData(queuedMessage.client.Socket, EncryptData(queuedMessage.message, queuedMessage.client.EncryptionKey));
+            m_messageQueue.erase(m_messageQueue.begin()+i);
+        }
+        i++;
+    }
+}
+
+
 std::string Program::ReceiveData()
 {
     sf::Packet packet;
@@ -302,16 +355,18 @@ std::string Program::ReceiveData()
     {
         if(m_clientSelector.wait())
         {
-            for(const auto& socket : m_clientSockets)
+            int i = 0;
+            for(const auto& client : m_clients)
             {
-                if(socket && m_clientSelector.isReady(*socket))
+                if(client.Socket && m_clientSelector.isReady(*client.Socket))
                 {
-                    if(socket->receive(packet) == sf::Socket::Disconnected)
+                    if(client.Socket->receive(packet) == sf::Socket::Disconnected)
                     {
-                        m_clientSockets.erase(std::find(m_clientSockets.begin(),m_clientSockets.end(), socket));
+                        m_clients.erase(m_clients.begin() + i);
                         successfulData = false;
                     }
                 }
+                i++;
             }
         }
     }
@@ -331,13 +386,48 @@ std::string Program::ReceiveData()
             m_serverSocket->disconnect();
             successfulData = false;
         }
+
     }
     if(successfulData)
     {
         std::string str;
         packet >> str;
 
-        return str;
+        return str.empty() ? "" : DecryptData(str, m_privateKey);
     }
     return "";
+}
+
+
+
+std::string Program::ConvertKeyToString(const CryptoPP::RSA::PublicKey &publicKey)
+{
+    std::string keyStr;
+    CryptoPP::StringSink keySink(keyStr);
+    publicKey.Save(keySink);
+    return keyStr;
+}
+
+CryptoPP::RSA::PublicKey Program::ConvertStringToKey(const std::string &keyStr)
+{
+    CryptoPP::RSA::PublicKey key;
+    CryptoPP::StringSource strSource(keyStr, true);
+    key.Load(strSource);
+    return key;
+}
+
+std::string Program::EncryptData(std::string plainText, CryptoPP::RSA::PublicKey publicKey)
+{
+    CryptoPP::RSAES_OAEP_SHA_Encryptor encryptor(publicKey);
+    std::string cipherText;
+    CryptoPP::StringSource ss(plainText, true, new CryptoPP::PK_EncryptorFilter(m_rng, encryptor, new CryptoPP::StringSink(cipherText)));
+    return cipherText;
+}
+
+std::string Program::DecryptData(std::string cipherText, CryptoPP::RSA::PrivateKey privateKey)
+{
+    CryptoPP::RSAES_OAEP_SHA_Decryptor decryptor(privateKey);
+    std::string recoveredText;
+    CryptoPP::StringSource ss(cipherText, true, new CryptoPP::PK_DecryptorFilter(m_rng, decryptor, new CryptoPP::StringSink(recoveredText)));
+    return recoveredText;
 }
