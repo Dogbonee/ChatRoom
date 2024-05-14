@@ -10,24 +10,25 @@
 
 Textbox::Textbox(const sf::Vector2f& size, const sf::Vector2f& position) : m_bActive(false), m_blinkCounter(0)
 {
-    m_textBoxOutline.setSize(size);
-    m_textBoxOutline.setOrigin(size.x/2, size.y/2);
-    m_textBoxOutline.setOutlineColor(sf::Color::Black);
-    m_textBoxOutline.setFillColor(sf::Color::Transparent);
-    m_textBoxOutline.setOutlineThickness(2);
-    m_textBoxOutline.setPosition(position);
+    m_textBoxTexture.loadFromFile("../assets/rectBox.png");
+    m_textBoxSprite.setTexture(m_textBoxTexture);
+    m_textBoxSprite.setOrigin(m_textBoxSprite.getGlobalBounds().width/2, m_textBoxSprite.getGlobalBounds().height/2);
+    m_textBoxSprite.setScale((size.x/400)*0.05,0.05);
+    m_textBoxSprite.setPosition(position);
 
     m_cursor.setFont(Resources::CursorFont);
+
     m_cursor.setString("l");
     m_cursor.setCharacterSize(50);
     m_cursor.setFillColor(sf::Color::Black);
-    m_cursor.setPosition(m_textBoxOutline.getGlobalBounds().left + 10, m_textBoxOutline.getGlobalBounds().top + 5);
+    m_cursor.setOrigin(m_cursor.getLocalBounds().width/2, m_cursor.getLocalBounds().height/2);
+    m_cursor.setPosition(m_textBoxSprite.getGlobalBounds().left + size.x/8, m_textBoxSprite.getGlobalBounds().top + m_textBoxSprite.getGlobalBounds().height/2-15);
 
     m_text.setFont(Resources::CursorFont);
     m_text.setString("");
     m_text.setCharacterSize(40);
     m_text.setFillColor(sf::Color::Black);
-    m_text.setPosition(m_textBoxOutline.getGlobalBounds().left + 10, m_textBoxOutline.getGlobalBounds().top + 10);
+    m_text.setPosition(m_textBoxSprite.getGlobalBounds().left + size.x/8, m_textBoxSprite.getGlobalBounds().top + m_textBoxSprite.getGlobalBounds().height/2-25);
 
 }
 
@@ -36,7 +37,7 @@ void Textbox::ManageTextBox(sf::RenderWindow* window, sf::Event event)
     switch(event.type)
     {
         case sf::Event::MouseMoved:
-            if(m_textBoxOutline.getGlobalBounds().contains(sf::Vector2f(event.mouseMove.x, event.mouseMove.y)))
+            if(m_textBoxSprite.getGlobalBounds().contains(sf::Vector2f(event.mouseMove.x, event.mouseMove.y)))
             {
                 window->setMouseCursor(Resources::TextCursor);
             }else
@@ -45,7 +46,7 @@ void Textbox::ManageTextBox(sf::RenderWindow* window, sf::Event event)
             }
         break;
         case sf::Event::MouseButtonPressed:
-            m_bActive = m_textBoxOutline.getGlobalBounds().contains(sf::Vector2f(event.mouseButton.x, event.mouseButton.y));
+            m_bActive = m_textBoxSprite.getGlobalBounds().contains(sf::Vector2f(event.mouseButton.x, event.mouseButton.y));
         break;
         case sf::Event::TextEntered:
             if(m_bActive)
@@ -63,7 +64,7 @@ void Textbox::ProcessText(sf::Uint32 unicode)
     if(unicode == 8)
     {
         m_text.setString(m_text.getString().substring(0, m_text.getString().getSize()-1));
-    }else if(m_text.getLocalBounds().width + 50 <= m_textBoxOutline.getLocalBounds().width && unicode != '\r')
+    }else if(m_text.getLocalBounds().width + 50 <= m_textBoxSprite.getGlobalBounds().width - 140 && unicode != '\r')
     {
         m_text.setString(m_text.getString() + unicode);
     }
@@ -101,7 +102,7 @@ const sf::String & Textbox::GetString()
 
 void Textbox::draw(sf::RenderTarget &target, sf::RenderStates states) const
 {
-    target.draw(m_textBoxOutline);
+    target.draw(m_textBoxSprite);
     target.draw(m_cursor);
     target.draw(m_text);
 }
