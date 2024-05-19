@@ -97,8 +97,6 @@ Program::~Program()
 void Program::Run()
 {
     m_window.setFramerateLimit(30);
-
-
     m_updateThread = std::thread(&Program::UpdateNetwork, this);
     while(m_window.isOpen())
     {
@@ -113,7 +111,6 @@ void Program::Update()
     m_nameBox.ManageCursorBlink(m_dt);
     m_addressBox.ManageCursorBlink(m_dt);
     m_portBox.ManageCursorBlink(m_dt);
-
     HandleEvents();
     Render();
 }
@@ -236,7 +233,6 @@ void Program::UpdateNetwork()
             m_textContainer.PushText(data);
         }
     }
-
 }
 
 

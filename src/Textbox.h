@@ -11,7 +11,8 @@ class Textbox : public sf::Drawable{
 
     bool m_bActive;
 
-    sf::RectangleShape m_textBoxOutline;
+    sf::Texture m_textBoxTexture;
+    sf::Sprite m_textBoxSprite;
     sf::Text m_cursor;
     float m_blinkCounter;
 
