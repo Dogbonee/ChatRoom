@@ -160,6 +160,7 @@ void Program::HandleEvents()
         else if(m_mode == Mode::CHAT)
         {
             m_textBox.ManageTextBox(&m_window, event);
+            m_textContainer.ManageTextContainer(&m_window, event);
         }
         switch(event.type)
         {
@@ -211,6 +212,7 @@ void Program::UpdateNetwork()
 {
     while(m_window.isOpen())
     {
+        sf::sleep(sf::milliseconds(50));
         if(!m_bSocketIsReady)continue;
 
         if(m_type == NetworkType::CLIENT)
