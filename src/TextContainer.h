@@ -15,8 +15,12 @@ class TextContainer : public sf::Drawable{
     float m_spacing;
     float m_textHeight;
 
+    int m_scrollIndex;
+
 public:
     TextContainer();
+    void ManageTextContainer(sf::RenderWindow* window, sf::Event event);
+    void Scroll(int up);
     void PushText(sf::String str);
     void draw(sf::RenderTarget &target, sf::RenderStates states) const override;
 };
