@@ -32,7 +32,6 @@ void TextContainer::ManageTextContainer(sf::RenderWindow *window, sf::Event even
                 m_scrollIndex--;
                 Scroll(1);
             }
-            std::cout<<m_scrollIndex<<'\n';
             break;
     }
 }
@@ -53,6 +52,7 @@ void TextContainer::PushText(sf::String str)
     text.setCharacterSize(30);
     text.setFillColor(sf::Color::Black);
 
+
     if(m_texts.empty())
     {
         text.setPosition(m_container.getGlobalBounds().left + 10, m_container.getGlobalBounds().top + m_spacing);
@@ -68,8 +68,11 @@ void TextContainer::PushText(sf::String str)
         }
     }
     m_texts.emplace_back(text);
-
-
+    if(m_scrollIndex < static_cast<int>(m_texts.size())-14)
+    {
+        Scroll(m_scrollIndex - (static_cast<int>(m_texts.size())-14));
+        m_scrollIndex = static_cast<int>(m_texts.size())-14;
+    }
     m_spacing += m_textHeight;
 
 }
