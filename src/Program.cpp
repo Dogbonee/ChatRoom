@@ -25,10 +25,10 @@ Program::Program() : m_window(sf::VideoMode(800,900), "Chatroom", sf::Style::Clo
     m_createRoomButton.SetButtonPosition(sf::Vector2f(600, 700));
     std::function serverFunc = [this] {
         m_username = m_nameBox.GetString();
-        if(!m_username.empty() && !m_portBox.GetString().isEmpty())
+        if(!m_username.empty() && !m_portBox.GetString().empty())
         {
-            m_address = m_addressBox.GetString().toAnsiString();
-            std::string portStr = m_portBox.GetString().toAnsiString();
+            m_address = m_addressBox.GetString();
+            std::string portStr = m_portBox.GetString();
             try
             {
                 m_port = std::stoi(portStr);
@@ -46,10 +46,10 @@ Program::Program() : m_window(sf::VideoMode(800,900), "Chatroom", sf::Style::Clo
     m_joinRoomButton.SetButtonPosition(sf::Vector2f(200, 700));
     std::function clientFunc = [this] {
         m_username = m_nameBox.GetString();
-        if(!m_username.empty() && !m_addressBox.GetString().isEmpty() && !m_portBox.GetString().isEmpty() && !m_networkThread.joinable())
+        if(!m_username.empty() && !m_addressBox.GetString().empty() && !m_portBox.GetString().empty() && !m_networkThread.joinable())
         {
-            m_address = m_addressBox.GetString().toAnsiString();
-            std::string portStr = m_portBox.GetString().toAnsiString();
+            m_address = m_addressBox.GetString();
+            std::string portStr = m_portBox.GetString();
             try
             {
                 m_port = std::stoi(portStr);
@@ -185,7 +185,7 @@ void Program::HandleKeyboardInput(sf::Keyboard::Key key)
             m_window.close();
         break;
         case sf::Keyboard::Enter:
-            if(m_mode == Mode::CHAT && !m_textBox.GetString().isEmpty())
+            if(m_mode == Mode::CHAT && !m_textBox.GetString().empty())
             {
                 if(m_type == NetworkType::SERVER)
                 {
