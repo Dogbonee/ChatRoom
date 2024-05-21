@@ -82,8 +82,13 @@ void Textbox::ProcessText(sf::Uint32 unicode)
         {
             ScrollText(1);
             m_textRenderOffset--;
+
         }
         m_text.setString(m_textBoxText.substr(m_textRenderOffset));
+        if(m_text.getGlobalBounds().width + 50 >= m_textBoxSpriteBounds.width)
+        {
+            m_textRenderOffset++;
+        }
     }
     //Push char
     else if(unicode != '\r')
