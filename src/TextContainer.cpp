@@ -52,29 +52,37 @@ void TextContainer::PushText(sf::String str)
     text.setCharacterSize(30);
     text.setFillColor(sf::Color::Black);
 
-
-    if(m_texts.empty())
+    do
     {
-        text.setPosition(m_container.getGlobalBounds().left + 10, m_container.getGlobalBounds().top + m_spacing);
-    }else
-    {
-        text.setPosition(m_container.getGlobalBounds().left + 10, m_texts[m_texts.size()-1].getPosition().y + m_textHeight);
-        //If the texts size is greater than the capacity of the container (14), then we scroll once and add to the scroll index
-        if(m_texts.size() >= 14)
+        int i;
+        for(i = text.getString().getSize(); text.getGlobalBounds().width + 15 > m_container.getGlobalBounds().width; i--)
         {
-            text.move(0, -m_textHeight);
-            m_scrollIndex++;
-            Scroll(-1);
+            text.setString(text.getString().substring(0, i));
         }
-    }
-    m_texts.emplace_back(text);
-    if(m_scrollIndex < static_cast<int>(m_texts.size())-14)
-    {
-        Scroll(m_scrollIndex - (static_cast<int>(m_texts.size())-14));
-        m_scrollIndex = static_cast<int>(m_texts.size())-14;
-    }
-    m_spacing += m_textHeight;
-
+        str = str.substring(i);
+        if(m_texts.empty())
+        {
+            text.setPosition(m_container.getGlobalBounds().left + 10, m_container.getGlobalBounds().top + m_spacing);
+        }else
+        {
+            text.setPosition(m_container.getGlobalBounds().left + 10, m_texts[m_texts.size()-1].getPosition().y + m_textHeight);
+            //If the texts size is greater than the capacity of the container (14), then we scroll once and add to the scroll index
+            if(m_texts.size() >= 14)
+            {
+                text.move(0, -m_textHeight);
+                m_scrollIndex++;
+                Scroll(-1);
+            }
+        }
+        m_texts.emplace_back(text);
+        if(m_scrollIndex < static_cast<int>(m_texts.size())-14)
+        {
+            Scroll(m_scrollIndex - (static_cast<int>(m_texts.size())-14));
+            m_scrollIndex = static_cast<int>(m_texts.size())-14;
+        }
+        m_spacing += m_textHeight;
+        text.setString(str);
+    }while(!str.isEmpty());
 }
 
 void TextContainer::draw(sf::RenderTarget &target, sf::RenderStates states) const
